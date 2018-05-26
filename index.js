@@ -11,8 +11,8 @@ const _ = require('lodash');
 //=========================================================================================================================================
 
 const SKILL_NAME = 'Appointments';
-const GET_PAITENT_MSG = 'Here are the details about your paitent';
-const GET_APPOINTMENTs_MSG = 'These are your appointments';
+const GET_PAITENT_MSG = 'Here are the details about your patient ';
+const GET_APPOINTMENTs_MSG = 'You have a total of';
 const HELP_MESSAGE = 'You can say tell me a space fact, or, you can say exit... What can I help you with?';
 const HELP_REPROMPT = 'What can I help you with?';
 const FALLBACK_MESSAGE = 'The appointments skill can\'t help you with that.  It can help you find the list of appointments for any particular day or time. What can I help you with?';
@@ -29,38 +29,162 @@ const STOP_MESSAGE = 'Goodbye!';
 //=========================================================================================================================================
 
 const GetAppointmentsHandler = {
+  
   canHandle(handlerInput) {
+    console.log("get appointments caalled"+ handlerInput);
     const request = handlerInput.requestEnvelope.request;
+    console.log("get appointments called Request : "+request);
     return request.type === 'LaunchRequest'
       || (request.type === 'IntentRequest'
-        && request.intent.name === 'appointment');
+        && request.intent.name === 'dpaAppointment');
   },
   handle(handlerInput) {
+    console.log("get appointments called data : "+data);
     const appointments = arraySort(data.appointments, 'date');
-    const speechOutput = GET_APPOINTMENTs_MSG + appointments;
+    console.log("get appointments called sorted data : "+appointments);
+    const totAppointments = appointments.length;
+    const date = new Date(appointments[0].date);
+    const speechOutput = GET_APPOINTMENTs_MSG + ", "+totAppointments+" appointments today with the earliest at "+ date.getHours()+" "+ date.getMinutes()+" hours with "+appointments[0].name;
 
     return handlerInput.responseBuilder
       .speak(speechOutput)
-      .withSimpleCard(SKILL_NAME, appointments)
+      .withSimpleCard(SKILL_NAME, appointments[0].name)
+      .getResponse();
+  },
+};
+
+const GetFreetimehandler = {
+  
+  canHandle(handlerInput) {
+    console.log("get free time called");
+    const request = handlerInput.requestEnvelope.request;
+    return request.type === 'LaunchRequest'
+      || (request.type === 'IntentRequest'
+        && request.intent.name === 'free');
+  },
+  handle(handlerInput) {
+    console.log("get free time called inside handle");
+    const appointments = arraySort(data.appointments, 'date');
+    console.log("get free time called sorted data : "+appointments);
+    const totAppointments = appointments.length;
+    
+    var dateAppointments = [];
+    const input = handlerInput.requestEnvelope.request.intent.slots.time.value;
+    console.log("input date : "+input);
+    const inputDate = new Date(input);
+    console.log(inputDate.getDate());
+    const result = inputDate.getDate()+" "+ inputDate.getMonth()+ " "+ inputDate.getFullYear();
+    for(var i=0;i<totAppointments;i++){
+      var date = new Date(appointments[i].date);
+      console.log("date "+ date.getDate());
+      if(date.getDate() === inputDate.getDate()){
+        dateAppointments.push(appointments[i]);
+      }
+    }
+    const totDateAppoints = dateAppointments.length;
+    console.log("total date appontments : "+totDateAppoints);
+    
+    var speechOutput;
+    const date1 = new Date(dateAppointments[0].date);
+    const date2 = new Date(dateAppointments[totDateAppoints-1].date);
+    if(totDateAppoints == 0){
+      speechOutput = "You do not have any appointments for "+ result ;
+    }else if(totDateAppoints < 4){
+      speechOutput = "You just have "+totDateAppoints+" appointments for "+result+". You are free before "+date1.getHours()+" "+date1.getMinutes()+" hours and after "+date2.getHours()+" "+date2.getMinutes()+" hours";
+    }else if(3 < totAppointments < 8){
+      speechOutput = "You have "+totDateAppoints+" appointments for "+result+". You are free before "+date1.getHours()+" "+date1.getMinutes()+" hours and after "+date2.getHours()+" "+date2.getMinutes()+" hours";
+    }else{
+      speechOutput = "You have "+totDateAppoints+" appointments for "+result+". You are free before "+date1.getHours()+" "+date1.getMinutes()+" hours and after "+date2.getHours()+" "+date2.getMinutes()+" hours. I guess you are pretty occupied ";
+    }
+    
+    return handlerInput.responseBuilder
+      .speak(speechOutput)
+      .withSimpleCard(SKILL_NAME, appointments[0].name)
       .getResponse();
   },
 };
 
 const GetPaitentDetailsHandler = {
   canHandle(handlerInput) {
+    console.log("get patient details called"+ handlerInput);
     const request = handlerInput.requestEnvelope.request;
+    console.log("get  patient details called request : "+request);
     return request.type === 'LaunchRequest'
       || (request.type === 'IntentRequest'
-        && request.intent.name === 'paitent_details');
+        && request.intent.name === 'patient_details');
   },
   handle(handlerInput) {
-    const paitentName = handlerInput.requestEnvelope.request.intent.slots.paitentName.value;
-    var paitent = _.filter(data, x => x.name === paitentName);
-    const speechOutput = GET_PAITENT_MSG + paitent;
+    console.log("get  patient details called data : "+data.patientDetails);
+    const patientName = handlerInput.requestEnvelope.request.intent.slots.patientName.value;
+    const patient = _.filter(data.patientDetails, x => x.name.toLowerCase() === patientName.toLowerCase());
+    console.log("get  patient details called patient found : "+patient[0].name);
+    const date = new Date(patient[0].date);
+    const speechOutput = GET_PAITENT_MSG + patient[0].name+". "+patient[0].name+" is suffering from "+patient[0].disease+" and has an appointment at "+ date.getHours()+" "+date.getMinutes()+" hours";
 
     return handlerInput.responseBuilder
       .speak(speechOutput)
-      .withSimpleCard(SKILL_NAME, paitent)
+      .withSimpleCard(SKILL_NAME, patient[0].name)
+      .getResponse();
+  },
+};
+
+const getPatientStatusHandler = {
+  canHandle(handlerInput) {
+    console.log("get patient status called");
+    const request = handlerInput.requestEnvelope.request;
+    return request.type === 'LaunchRequest'
+      || (request.type === 'IntentRequest'
+        && request.intent.name === 'patientStatus');
+  },
+  handle(handlerInput) {
+    console.log("get  patient status called data : "+data.patientDetails);
+    const patients = data.patientDetails;
+    const totPatients = patients.length;
+    console.log("get patient status total patients : "+totPatients);
+    const criticalPatients = _.filter(patients, x => x.state.toLowerCase() === 'Critical'.toLowerCase());
+    console.log("get patient status critical patients : "+criticalPatients.length);
+    const speechOutput = "You have a total of "+ totPatients+" patients admitted as of today, out of which "+criticalPatients.length+" are still in critical condition.";
+
+    return handlerInput.responseBuilder
+      .speak(speechOutput)
+      .withSimpleCard(SKILL_NAME, speechOutput)
+      .getResponse();
+  },
+};
+
+const getSpecificPatients = {
+  canHandle(handlerInput) {
+    console.log("get specific patients called");
+    const request = handlerInput.requestEnvelope.request;
+    return request.type === 'LaunchRequest'
+      || (request.type === 'IntentRequest'
+        && request.intent.name === 'specificPatients');
+  },
+  handle(handlerInput) {
+    var speechOutput;
+    console.log("get specific patients called data : "+data.appointments);
+    const patients = data.appointments;
+    const totPatients = patients.length;
+    console.log("get specific patients total patients : "+totPatients);
+    const patientState = handlerInput.requestEnvelope.request.intent.slots.patientState.value;
+     console.log("get specific patients of type : "+patientState);
+    const specificPatients = _.filter(patients, x => x.state.toLowerCase() === patientState.toLowerCase());
+    console.log("get specific patients, "+patientState+" patients : "+specificPatients.length);
+    var patientNames = "";
+
+    if(specificPatients.length > 0){
+      for(var i=0;i<specificPatients.length-1;i++){
+      patientNames = patientNames + specificPatients[i].name + ",";
+      }
+      patientNames = patientNames+" and "+specificPatients[specificPatients.length-1].name;
+      speechOutput = "You have a total of "+ specificPatients.length+" "+patientState+" patients and they are "+patientNames;
+    }else{
+      speechOutput = "You do not have any "+patientState+" patients";
+    }
+    
+    return handlerInput.responseBuilder
+      .speak(speechOutput)
+      .withSimpleCard(SKILL_NAME, speechOutput)
       .getResponse();
   },
 };
@@ -141,6 +265,10 @@ const skillBuilder = Alexa.SkillBuilders.custom();
 exports.handler = skillBuilder
   .addRequestHandlers(
     GetAppointmentsHandler,
+    GetFreetimehandler,
+    GetPaitentDetailsHandler,
+    getPatientStatusHandler,
+    getSpecificPatients,
     HelpHandler,
     ExitHandler,
     FallbackHandler,
